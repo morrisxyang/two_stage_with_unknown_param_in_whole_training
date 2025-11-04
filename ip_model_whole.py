@@ -45,12 +45,12 @@ def _format_A_constraints(A, n_x, sparse_lhs=False):
     """
     if sparse_lhs:
         return sps.coo_matrix(
-            (0, n_x) if A is None else A, dtype=np.float, copy=True
+            (0, n_x) if A is None else A, dtype=float, copy=True
         )
     elif A is None:
-        return np.zeros((0, n_x), dtype=np.float)
+        return np.zeros((0, n_x), dtype=float)
     else:
-        return np.array(A, dtype=np.float, copy=True)
+        return np.array(A, dtype=float, copy=True)
 
 def _format_b_constraints(b):
     """Format the upper bounds of the constraints to a 1D array
@@ -69,8 +69,8 @@ def _format_b_constraints(b):
 
     """
     if b is None:
-        return np.array([], dtype=np.float)
-    b = np.array(b, dtype=np.float, copy=True).squeeze()
+        return np.array([], dtype=float)
+    b = np.array(b, dtype=float, copy=True).squeeze()
     return b if b.size != 1 else b.reshape((-1))
 
 def _clean_inputs(c, A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
@@ -136,7 +136,7 @@ def _clean_inputs(c, A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
         raise TypeError
 
     try:
-        c = np.array(c, dtype=np.float, copy=True).squeeze()
+        c = np.array(c, dtype=float, copy=True).squeeze()
     except ValueError:
         raise TypeError(
             "Invalid input for linprog: c must be a 1D array of numerical "
@@ -656,11 +656,11 @@ def postsolve(x, n_x, complete=False, tol=1e-8, copy=False):
 def _initialization(shape, init_val=None):
     if init_val is None:
         m_eq, n = shape
-        x0 = np.ones(n,dtype = np.float)
-        y0 = np.zeros(m_eq,dtype = np.float)
-        t0 = np.ones(n,dtype = np.float)
-        tau0 = np.array([1], dtype=np.float)
-        kappa0 = np.array([1], dtype=np.float)
+        x0 = np.ones(n,dtype = float)
+        y0 = np.zeros(m_eq,dtype = float)
+        t0 = np.ones(n,dtype = float)
+        tau0 = np.array([1], dtype=float)
+        kappa0 = np.array([1], dtype=float)
     else:
         x0 = init_val['x']
         y0 = init_val['y']
@@ -876,6 +876,7 @@ def _do_step(x, y, t, tau, kappa,  d_x,d_y,d_t, d_tau, d_kappa, alpha):
     y = y + alpha * d_y
     return x, y, t, tau, kappa
 
+
 def _get_step(x, d_x, t, d_t, tau, d_tau, kappa, d_kappa, alpha0):
     i_x = d_x < 0
     i_t = d_t < 0
@@ -883,8 +884,34 @@ def _get_step(x, d_x, t, d_t, tau, d_tau, kappa, d_kappa, alpha0):
     alpha_tau = alpha0 * tau / -d_tau if d_tau < 0 else 1
     alpha_t = alpha0 * np.min(t[i_t] / -d_t[i_t]) if np.any(i_t) else 1
     alpha_kappa = alpha0 * kappa / -d_kappa if d_kappa < 0 else 1
-    alpha = np.min([1, alpha_x, alpha_tau, alpha_t, alpha_kappa])
+    # 看起来原来处理有错误, 有数组有数字, np.min 无法处理
+    # [1 1.8721268769598278 [2.05580894] 0.6056114027667795 [1.36466074]]
+    # print([1, alpha_x, alpha_tau, alpha_t, alpha_kappa])
+    values = []
+    # 这里暂时不好动原来的逻辑, 先做兼容
+    for item in [1, alpha_x, alpha_tau, alpha_t, alpha_kappa]:
+        if isinstance(item, np.ndarray):
+            # 展平数组（处理多维情况），并转为列表添加
+            values.extend(item.flatten().tolist())
+        elif isinstance(item, list):
+            values.extend(item)
+        else:
+            values.append(item)
+    # [1, 1.8721268769598278, 2.055808938027204, 0.6056114027667795, 1.3646607441713774]
+    # print(values)
+    alpha = np.min(values)
+    # print(alpha)
     return alpha
+
+# def _get_step(x, d_x, t, d_t, tau, d_tau, kappa, d_kappa, alpha0):
+#     i_x = d_x < 0
+#     i_t = d_t < 0
+#     alpha_x = alpha0 * np.min(x[i_x] / -d_x[i_x]) if np.any(i_x) else 1
+#     alpha_tau = alpha0 * tau / -d_tau if d_tau < 0 else 1
+#     alpha_t = alpha0 * np.min(t[i_t] / -d_t[i_t]) if np.any(i_t) else 1
+#     alpha_kappa = alpha0 * kappa / -d_kappa if d_kappa < 0 else 1
+#     alpha = np.min([1, alpha_x, alpha_tau, alpha_t, alpha_kappa])
+#     return alpha
 
 def _indicators(A, b, c,  x, y, t, tau, kappa):
    
