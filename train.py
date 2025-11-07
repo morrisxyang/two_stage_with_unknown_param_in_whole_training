@@ -362,7 +362,7 @@ class Intopt:
             total_loss = 0
             #          for parameters in self.model.parameters():
             #            print(parameters)
-            if e < 1:
+            if e < 3:
                 # if e < 0:
                 # print('stage 1')
                 train_dl = data_utils.DataLoader(train_df, batch_size=self.batch_size, shuffle=False)
@@ -382,7 +382,7 @@ class Intopt:
 
                     self.optimizer.step()
                 grad_list[e] = total_loss
-                print("Epoch{} ::loss {} ->".format(e, total_loss))
+                print("Epoch{} ::MSE loss {} ->".format(e, total_loss))
 
             else:
                 #            if e == 1:
@@ -433,7 +433,8 @@ class Intopt:
                     # print(c_torch.shape, G_torch.shape, x.shape)    # torch.Size([242]) torch.Size([43, 242]) torch.Size([242])
                     #                x_s1 = ip_model_wholeFile.x_s1
                     #                print(x_s1, cur_opt_sol)
-                    newLoss = compensation_fee * abs(x_s1 - cur_opt_sol).sum()
+                    # print("x_s1:", x_s1.detach().cpu().tolist())
+                    newLoss =  compensation_fee * abs(x_s1 - cur_opt_sol).sum()
 
                     #                pred_cost = op[:, 0]
                     #                pred_weight = op[:, 1]
@@ -468,7 +469,7 @@ class Intopt:
                     #                    self.optimizer.step()
                     num = num + 1
                 grad_list[e] = total_loss / train_case_num
-                print("Epoch{} ::loss {} ->".format(e, grad_list[e]))
+                print("Epoch{} :: Val loss {} ->".format(e, grad_list[e]))
 
             logging.info("EPOCH Ends")
             # print("Epoch{}".format(e))
@@ -559,7 +560,7 @@ print("*** Pen as loss ****")
 
 # Load knapsack data once (with random sampling)
 
-def train(run_times: int, random_select=True, lr=1e-5):
+def train(run_times: int, random_select=True, lr=1e-5, epochs=4):
     recordBest = np.zeros((1, run_times))
     for testi in range(run_times):
         print(f"\n=== Test run {testi} ===")
@@ -635,7 +636,7 @@ def train(run_times: int, random_select=True, lr=1e-5):
             print(f"================={j}===================")
             # h_data [11] item(10) + 1 cap, A [2, item(10)], b_data [2]
             clf = Intopt(train_opt_sols, h_data, A_data, b_data, purchase_fee, compensation_fee,
-                         damping=damping, lr=lr, n_features=feature_num, thr=thr, epochs=8)
+                         damping=damping, lr=lr, n_features=feature_num, thr=thr, epochs=epochs)
             clf.fit(train_feature, train_value)
             train_rslt, predTrainVal = clf.val_loss(capacity, train_feature, train_value)
             avgTrainCorrReg = np.mean(train_rslt)
@@ -663,7 +664,7 @@ def train(run_times: int, random_select=True, lr=1e-5):
         #    recordBest[0][i] = np.sum(val_rslt[1])
 
         clfBest = Intopt(test_opt_sols, h_data, A_data, b_data, purchase_fee, compensation_fee,
-                         damping=damping, lr=lr, n_features=feature_num, thr=thr, epochs=8)
+                         damping=damping, lr=lr, n_features=feature_num, thr=thr, epochs=epochs)
         clfBest.model.load_state_dict(torch.load('model.pkl'))
 
         val_rslt, predTestVal = clfBest.val_loss(capacity, feature_test, value_test)
@@ -734,4 +735,11 @@ if torch.cuda.is_available():
 
 if __name__ == '__main__':
     clear_files()
-    train(run_times=1, random_select=False, lr=1e-5)
+    train(run_times=1, random_select=False, lr=1e-5, epochs=10)
+
+    # NPIT
+    # 1. 20 bad
+    # 2. Relu price, weight? cap=100 compen=5
+    # 3. Speed, 42069, 0 1 2, price, weight?
+    # 4. back propogation
+
