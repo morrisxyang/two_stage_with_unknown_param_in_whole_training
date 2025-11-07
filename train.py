@@ -353,7 +353,8 @@ class Intopt:
         self.optimizer = optimizer(self.model.parameters(), **hyperparams)
 
     def fit(self, feature, value):
-        logging.info("Intopt")
+        print("=" * 8 , "fit", "=" * 8)
+        print(f"feature shape: {feature.shape}, value shape: {value.shape}")
         train_df = MyCustomDataset(feature, value)
 
         criterion = nn.L1Loss(reduction='mean')  # nn.MSELoss(reduction='mean')
@@ -363,6 +364,7 @@ class Intopt:
             #          for parameters in self.model.parameters():
             #            print(parameters)
             if e < 3:
+                print("=" * 8, f"epoch: {e}, supervised learning", "=" * 8)
                 # if e < 0:
                 # print('stage 1')
                 train_dl = data_utils.DataLoader(train_df, batch_size=self.batch_size, shuffle=False)
@@ -370,11 +372,13 @@ class Intopt:
                     self.optimizer.zero_grad()
 
                     op = self.model(feature).squeeze()
-                    #                print(feature, value, op)
-                    #                print(feature.shape, value.shape, op.shape)
+                    # print(feature, value, op)
+                    # torch.Size([10, 4096]) torch.Size([10, 2]) torch.Size([10, 2])
+                    # print(feature.shape, value.shape, op.shape)
+
                     # target_num=1: torch.Size([10, 4096]) torch.Size([10]) torch.Size([10])
                     # target_num=2: torch.Size([10, 4096]) torch.Size([10, 2]) torch.Size([10, 2])
-                    #                print(value, op)
+                    # print(value, op)
 
                     loss = criterion(op, value)
                     total_loss += loss.item()
@@ -385,6 +389,7 @@ class Intopt:
                 print("Epoch{} ::MSE loss {} ->".format(e, total_loss))
 
             else:
+                print("=" * 8, f"epoch: {e}, IPO func learning", "=" * 8)
                 #            if e == 1:
                 #                for param_group in self.optimizer.param_groups:
                 #                    param_group['lr'] = 1e-5
